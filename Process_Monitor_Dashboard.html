@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b4a7d">
+<meta name="description" content="Real-time process performance monitoring dashboard with step-response analysis for laptops and smartphones.">
+<title>Process Performance Monitor</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root{
+    --bg:#eef2f6; --panel:#ffffff; --ink:#1b2430; --muted:#5d6b7a; --line:#d3d9df;
+    --accent:#0b4a7d; --accent-hover:#093c66; --accent2:#e8f1f8;
+    --success:#176b3a; --success-bg:#d9f2e3; --danger:#c92a2a; --danger-bg:#ffe3e3;
+    --warning:#b7791f; --warning-bg:#fff3cd; --scope-bg:#161b22;
+    --radius:8px; --shadow:0 1px 3px rgba(0,0,0,.08);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+  
+  /* Header */
+  header{background:var(--accent);color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:0 2px 6px rgba(0,0,0,.15);position:sticky;top:0;z-index:40}
+  header .title-area{display:flex;flex-direction:column;gap:2px}
+  header h1{margin:0;font-size:18px;font-weight:700;letter-spacing:-.2px;display:flex;align-items:center;gap:8px}
+  header small{opacity:.85;font-size:12.5px}
+  header .hdr-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  
+  /* Status pill */
+  .status-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.16);backdrop-filter:blur(4px);padding:5px 12px;border-radius:20px;font-size:13px;font-weight:500}
+  .dot{width:9px;height:9px;border-radius:50%;background:#9aa7b4;transition:all .3s ease}
+  .dot.on{background:#5be28a;box-shadow:0 0 0 3px rgba(91,226,138,.35);animation:pulse 2s infinite}
+  .dot.warn{background:#f6c343;box-shadow:0 0 0 3px rgba(246,195,67,.35)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+  /* Top icon buttons */
+  .icon-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;padding:0;transition:all .2s ease}
+  .icon-btn:hover{background:rgba(255,255,255,.25)}
+  .icon-btn:active{transform:scale(.92)}
+
+  /* Main container */
+  .wrap{max-width:1560px;margin:auto;padding:14px 16px 28px;display:flex;flex-direction:column;gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .card>h2{margin:0;padding:12px 14px 10px;font-size:14.5px;color:var(--accent);display:flex;justify-content:space-between;align-items:center;font-weight:700;border-bottom:1px solid var(--line)}
+
+  /* Controls Toolbar */
+  .toolbar{padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;background:#fff}
+  .group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .sep{width:1px;height:28px;background:var(--line);display:inline-block}
+
+  /* Form Elements & Touch Targets */
+  button,select{font:inherit;min-height:40px;padding:8px 14px;border:1px solid var(--accent);border-radius:6px;touch-action:manipulation;transition:all .15s ease}
+  button{background:var(--accent);color:#fff;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  button:hover:not(:disabled){background:var(--accent-hover)}
+  button:active:not(:disabled){transform:scale(.97)}
+  button.alt{background:#fff;color:var(--accent);border-color:var(--line)}
+  button.alt:hover:not(:disabled){background:#f8fafc;border-color:var(--accent)}
+  button.success-btn{background:var(--success);border-color:var(--success);color:#fff}
+  button.success-btn:hover:not(:disabled){background:#13572e}
+  button.danger-btn{background:var(--danger);border-color:var(--danger);color:#fff}
+  button.danger-btn:hover:not(:disabled){background:#a72222}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select{background:#fff;color:var(--ink);border-color:var(--line);cursor:pointer;font-weight:500;padding-right:24px}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #f2a900;outline-offset:2px}
+
+  /* Demo Drawer */
+  .demo{padding:10px 14px 12px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;color:var(--ink);background:var(--accent2);border-top:1px solid var(--line);font-size:13.5px}
+  .demo label{display:flex;gap:6px;align-items:center;cursor:pointer;user-select:none}
+  .demo .hint{color:var(--muted);font-size:12.5px;margin-left:auto}
+
+  /* Quick KPI Metric Strip (Always visible for fast smartphone monitoring) */
+  .kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:2px}
+  .kpi-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow)}
+  .kpi-card .kpi-lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+  .kpi-card .kpi-val{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kpi-card .kpi-sub{font-size:11.5px;color:var(--muted)}
+
+  /* Desktop vs Mobile Layout */
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:14px;align-items:start}
+  .left{display:flex;flex-direction:column;gap:14px;min-width:0}
+  .right{position:sticky;top:70px}
+
+  /* Oscilloscope Scope */
+  .scope{background:var(--scope-bg);border-radius:var(--radius);padding:10px 12px;border:1px solid #000;box-shadow:inset 0 2px 8px rgba(0,0,0,.6);position:relative}
+  .scope .bar{display:flex;gap:14px 18px;color:#c9d1d9;font-size:12.5px;padding:0 4px 8px;flex-wrap:wrap;align-items:center}
+  .scope .bar .legend-item{display:inline-flex;align-items:center;gap:6px}
+  .sw{display:inline-block;width:16px;height:3px;vertical-align:middle;border-radius:2px}
+  .scope-hud{position:absolute;top:38px;left:18px;right:18px;background:rgba(22,27,34,.88);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.15);border-radius:4px;padding:5px 10px;color:#e6edf3;font-size:12.5px;font-variant-numeric:tabular-nums;display:flex;gap:14px;justify-content:space-between;pointer-events:none;opacity:0;transition:opacity .2s ease;z-index:5}
+  .scope-hud.active{opacity:1}
+  canvas{width:100%;height:380px;display:block;touch-action:none;cursor:crosshair}
+
+  /* Inputs Grid */
+  .inputs{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;padding:12px 14px 14px}
+  .in{background:#f6f8fa;border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0}
+  .in span{display:block;font-size:12px;color:var(--muted);margin-bottom:2px}
+  .in b{font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;color:var(--ink)}
+  .in.wide{grid-column:span 2}
+  .in input{width:70px;font:inherit;font-weight:700;border:1px solid var(--line);border-radius:4px;padding:3px 6px;background:#fff}
+
+  /* Results Table */
+  .badge{font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;background:#e3e7eb;color:var(--muted)}
+  .badge.live{background:var(--warning-bg);color:var(--warning);animation:pulse 1.5s infinite}
+  .badge.final{background:var(--success-bg);color:var(--success)}
+  table.res{width:100%;border-collapse:collapse}
+  table.res td{padding:10px 14px;border-top:1px solid var(--line);vertical-align:baseline}
+  table.res td:first-child{color:var(--ink);font-weight:500}
+  table.res td.v{text-align:right;font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent);white-space:nowrap}
+  table.res td.u{width:36px;color:var(--muted);font-size:13.5px;padding-left:0}
+  table.res tr.grp td{background:var(--accent2);font-size:12.5px;font-weight:700;color:var(--accent);padding:7px 14px;text-transform:uppercase;letter-spacing:.3px}
+  .foot{font-size:12px;color:var(--muted);padding:10px 14px 14px;border-top:1px solid var(--line);margin:0;line-height:1.45}
+
+  /* Live Samples */
+  .samples{max-height:220px;overflow:auto;-webkit-overflow-scrolling:touch}
+  .samples table{border-collapse:collapse;width:100%;font-size:13px}
+  .samples td,.samples th{padding:6px 12px;border-top:1px solid var(--line);text-align:right}
+  .samples th{color:var(--muted);font-weight:600;position:sticky;top:0;background:#f8fafc;z-index:2}
+
+  /* Mobile Tabs (Segmented control) */
+  .mobile-tabs{display:none;margin-bottom:2px}
+  .tab-buttons{display:flex;background:#e2e8f0;border-radius:8px;padding:3px;gap:2px}
+  .tab-btn{flex:1;background:transparent;border:none;color:var(--muted);padding:8px 10px;font-size:13px;font-weight:600;border-radius:6px;cursor:pointer;min-height:36px}
+  .tab-btn.active{background:#fff;color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+  /* Modal Dialogs */
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s ease}
+  .modal-overlay.open{opacity:1;pointer-events:auto}
+  .modal-card{background:#fff;border-radius:12px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 12px 30px rgba(0,0,0,.25);display:flex;flex-direction:column}
+  .modal-hdr{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;background:var(--accent);color:#fff;border-radius:12px 12px 0 0}
+  .modal-hdr h3{margin:0;font-size:16px;font-weight:700}
+  .modal-close{background:transparent;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0;min-height:unset;line-height:1}
+  .modal-nav{display:flex;background:#f1f5f9;border-bottom:1px solid var(--line);overflow-x:auto}
+  .modal-nav-btn{background:transparent;border:none;border-bottom:2px solid transparent;padding:10px 14px;font-size:13px;font-weight:600;color:var(--muted);border-radius:0;white-space:nowrap;cursor:pointer}
+  .modal-nav-btn.active{color:var(--accent);border-bottom-color:var(--accent);background:#fff}
+  .modal-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px;font-size:14px}
+  .conn-box{background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .conn-box h4{margin:0;font-size:14px;color:var(--accent)}
+  .input-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .input-row input{flex:1;min-width:160px;min-height:38px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font:inherit}
+  .qr-center{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;background:#fff;border-radius:8px;border:1px solid var(--line)}
+  .room-pill{font-size:24px;font-weight:800;letter-spacing:4px;padding:6px 16px;background:var(--accent2);color:var(--accent);border-radius:8px;text-align:center;margin:6px 0}
+
+  /* Fullscreen Oscilloscope Mode */
+  .scope.fullscreen{position:fixed;inset:0;width:100vw;height:100vh;z-index:999;border-radius:0;padding:12px;display:flex;flex-direction:column}
+  .scope.fullscreen canvas{flex:1;height:auto!important}
+
+  /* Responsive Breakpoints */
+  @media(max-width:1000px){
+    .layout{grid-template-columns:1fr}
+    .right{position:static}
+    .mobile-tabs{display:block}
+    .kpi-strip{grid-template-columns:repeat(2,1fr)}
+    canvas{height:300px}
+    header h1{font-size:16.5px}
+    .toolbar{gap:8px 12px}
+    .sep{display:none}
+  }
+
+  @media(max-width:600px){
+    .wrap{padding:10px 10px 24px}
+    header{padding:10px 14px}
+    header small{display:none}
+    canvas{height:250px}
+    .kpi-card .kpi-val{font-size:19px}
+    .inputs{grid-template-columns:repeat(2,1fr)}
+    .in.wide{grid-column:span 2}
+    button,select{flex:1;min-width:120px}
+    .group{width:100%;justify-content:space-between}
+  }
+
+  @media(orientation:landscape) and (max-height:550px){
+    header{padding:6px 14px}
+    header small{display:none}
+    .wrap{padding:8px 10px}
+    .toolbar{padding:6px 10px}
+    canvas{height:calc(100vh - 140px)!important}
+    .kpi-strip{grid-template-columns:repeat(4,1fr)}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-area">
+    <h1>📈 Process Performance Monitor</h1>
+    <small>Real-time step-response analysis · Laptop & Smartphone</small>
+  </div>
+  <div class="hdr-actions">
+    <div class="status-pill" id="connPill">
+      <span class="dot" id="dot"></span>
+      <span id="statusTxt">Not connected</span>
+    </div>
+    <button class="icon-btn" id="btnSound" title="Toggle audio chime" aria-label="Toggle sound">🔊</button>
+    <button class="icon-btn" id="btnFs" title="Toggle fullscreen scope" aria-label="Toggle fullscreen">⛶</button>
+    <button class="icon-btn" id="btnHelp" title="Connection setup" aria-label="Connection options">⚡</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- Top Controls Card -->
+  <div class="card">
+    <div class="toolbar">
+      <div class="group">
+        <button id="btnConnect" class="success-btn">⚡ Connect Device</button>
+        <button id="btnDemo" class="alt">🧪 Run Demo</button>
+        <button id="btnPairHdr" class="alt" title="Pair phone with laptop">📱 Pair Phone</button>
+      </div>
+      <div class="sep"></div>
+      <div class="group">
+        <label for="selSig" style="font-weight:600;font-size:13.5px">Signal</label>
+        <select id="selSig" aria-label="Process signal selection">
+          <option value="3">3 · PID-controlled process (closed loop)</option>
+          <option value="1">1 · Underdamped second order</option>
+          <option value="2">2 · Sluggish first order + dead time</option>
+          <option value="4">4 · Recorded scope response</option>
+        </select>
+      </div>
+      <div class="sep"></div>
+      <div class="group">
+        <button id="btnStart" class="success-btn" disabled>▶ Start</button>
+        <button id="btnStop" class="danger-btn" disabled>⏹ Stop</button>
+        <button id="btnClear" class="alt">↺ Clear</button>
+        <button id="btnCsv" class="alt" disabled title="Save or share CSV">📥 Save CSV</button>
+      </div>
+    </div>
+
+    <!-- Demo Effects Drawer -->
+    <div class="demo" id="demoOpts" hidden>
+      <strong>Demo simulation effects:</strong>
+      <label><input type="checkbox" id="fxSlow"> Sluggish process (1.5× slower)</label>
+      <label><input type="checkbox" id="fxNoise"> Measurement noise (±0.01)</label>
+      <label><input type="checkbox" id="fxDist"> Load disturbance at t = 12 s</label>
+      <span class="hint">Applied when you tap Start.</span>
+    </div>
+  </div>
+
+  <!-- Primary Oscilloscope Card -->
+  <div class="scope" id="scopeContainer">
+    <div class="bar">
+      <span class="legend-item"><i class="sw" style="background:#f2d541"></i>Process value (PV)</span>
+      <span class="legend-item"><i class="sw" style="background:#5ec8e5"></i>Setpoint (SP)</span>
+      <span class="legend-item"><i class="sw" style="background:rgba(94,200,229,.35);height:8px"></i>Settling band</span>
+      <span id="hudLive" style="margin-left:auto;font-variant-numeric:tabular-nums;font-weight:600">t = 0.00 s</span>
+    </div>
+    <div class="scope-hud" id="scopeHud">
+      <span id="hudT">t = —</span>
+      <span id="hudSP">SP = —</span>
+      <span id="hudPV">PV = —</span>
+      <span id="hudE">e = —</span>
+    </div>
+    <canvas id="cv"></canvas>
+  </div>
+
+  <!-- Quick KPI Metric Cards (Visible right under scope on all devices) -->
+  <div class="kpi-strip">
+    <div class="kpi-card">
+      <span class="kpi-lbl">Rise Time (10–90%)</span>
+      <span class="kpi-val" id="kpiTr">—</span>
+      <span class="kpi-sub">Seconds</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-lbl">Peak & Overshoot</span>
+      <span class="kpi-val" id="kpiOS">—</span>
+      <span class="kpi-sub" id="kpiPeakSub">Peak: —</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-lbl">Settling Time</span>
+      <span class="kpi-val" id="kpiTs">—</span>
+      <span class="kpi-sub" id="kpiTsSub">Within band</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-lbl">Steady-State Err</span>
+      <span class="kpi-val" id="kpiSSE">—</span>
+      <span class="kpi-sub">SP − Final PV</span>
+    </div>
+  </div>
+
+  <!-- Mobile Tab Navigation -->
+  <div class="mobile-tabs" id="mobileTabNav">
+    <div class="tab-buttons">
+      <button class="tab-btn active" data-tab="tabCalc">📊 All Metrics</button>
+      <button class="tab-btn" data-tab="tabInput">⚙️ System Inputs</button>
+      <button class="tab-btn" data-tab="tabSamples">📋 Live Samples</button>
+    </div>
+  </div>
+
+  <!-- Main Content Layout -->
+  <div class="layout">
+    <div class="left">
+      <!-- Input Values Card -->
+      <div class="card" id="cardInputs">
+        <h2>Input values & System parameters</h2>
+        <div class="inputs">
+          <div class="in wide"><span>Signal</span><b id="iNAME">—</b></div>
+          <div class="in wide"><span>System Transfer Function</span><b id="iSYS">—</b></div>
+          <div class="in"><span>Setpoint (SP)</span><b id="iSP">—</b></div>
+          <div class="in"><span>Sample time (s)</span><b id="iTs">—</b></div>
+          <div class="in"><span>Run time (s)</span><b id="iTend">—</b></div>
+          <div class="in"><span>Kp</span><b id="iKp">—</b></div>
+          <div class="in"><span>Ki</span><b id="iKi">—</b></div>
+          <div class="in"><span>Kd</span><b id="iKd">—</b></div>
+          <div class="in"><span>Settling band (±%)</span><input id="band" type="number" value="2" min="0.5" max="10" step="0.5" aria-label="Settling band in percent"></div>
+          <div class="in"><span>Samples received</span><b id="iN">0</b></div>
+        </div>
+      </div>
+
+      <!-- Live Samples Log Card -->
+      <div class="card" id="cardSamples">
+        <h2>Live sample data stream</h2>
+        <div class="samples">
+          <table>
+            <thead><tr><th>t (s)</th><th>SP</th><th>PV</th><th>e = SP − PV</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calculated Performance Metrics Card -->
+    <div class="right card" id="cardCalc">
+      <h2>Calculated values <span class="badge" id="badge">Waiting</span></h2>
+      <table class="res">
+        <tr class="grp"><td colspan="3">Transient response</td></tr>
+        <tr><td>Rise time (10–90%)</td><td class="v" id="mTr">—</td><td class="u">s</td></tr>
+        <tr><td>Peak time</td><td class="v" id="mTp">—</td><td class="u">s</td></tr>
+        <tr><td>Overshoot</td><td class="v" id="mOS">—</td><td class="u">%</td></tr>
+        <tr><td>Settling time</td><td class="v" id="mTs">—</td><td class="u">s</td></tr>
+        <tr class="grp"><td colspan="3">Accuracy</td></tr>
+        <tr><td>Steady-state error</td><td class="v" id="mSSE">—</td><td class="u"></td></tr>
+        <tr class="grp"><td colspan="3">Error integrals</td></tr>
+        <tr><td>IAE</td><td class="v" id="mIAE">—</td><td class="u"></td></tr>
+        <tr><td>ISE</td><td class="v" id="mISE">—</td><td class="u"></td></tr>
+        <tr><td>ITAE</td><td class="v" id="mITAE">—</td><td class="u"></td></tr>
+      </table>
+      <p class="foot">e(t) = SP − PV. IAE = ∫|e|dt, ISE = ∫e²dt, ITAE = ∫t·|e|dt (trapezoidal rule). Steady-state error = SP − mean of the last 5% of samples. Values update live and freeze upon completion.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Connection / Pairing Modal -->
+<div class="modal-overlay" id="modalConn">
+  <div class="modal-card">
+    <div class="modal-hdr">
+      <h3>⚡ Device Connection & Mobile Pairing</h3>
+      <button class="modal-close" id="modalClose" aria-label="Close dialog">×</button>
+    </div>
+    <div class="modal-nav">
+      <button class="modal-nav-btn active" data-m="pair">📱 Phone Pairing</button>
+      <button class="modal-nav-btn" data-m="ws">🌐 WiFi / WebSocket</button>
+      <button class="modal-nav-btn" data-m="usb">🔌 USB Serial / OTG</button>
+      <button class="modal-nav-btn" data-m="ble">📶 Bluetooth (BLE)</button>
+    </div>
+    <div class="modal-body">
+      <!-- Tab 1: Phone Pairing (Cloud Relay) -->
+      <div id="mPane_pair" class="conn-pane">
+        <div class="conn-box">
+          <h4>📱 Cloud / Remote Phone Pairing</h4>
+          <p style="margin:0;color:var(--muted);font-size:13px">
+            Monitor this process seamlessly on your smartphone! When the Arduino is connected to your laptop, broadcast it to your phone with zero cables or network configuration.
+          </p>
+          <div id="pairHostArea">
+            <button id="btnCreateRoom" class="success-btn" style="width:100%">📡 Start Phone Broadcast & Show QR Code</button>
+          </div>
+          <div id="pairInfoArea" style="display:none;flex-direction:column;gap:10px">
+            <div class="qr-center" id="qrContainer"></div>
+            <div style="text-align:center">
+              <span style="font-size:12px;color:var(--muted)">ROOM CODE</span>
+              <div class="room-pill" id="roomCodeDisplay">----</div>
+              <button id="btnCopyLink" class="alt" style="margin-top:6px;width:100%">📋 Copy Mobile Link</button>
+            </div>
+            <p style="margin:0;font-size:12px;color:var(--muted);text-align:center">
+              Point your smartphone camera at the QR code, or open the link on your phone.
+            </p>
+          </div>
+          <div style="border-top:1px solid var(--line);padding-top:12px;margin-top:6px">
+            <span style="font-weight:600;font-size:13px">Joining from a smartphone?</span>
+            <div class="input-row" style="margin-top:6px">
+              <input type="text" id="joinRoomInput" placeholder="Enter 4-letter Room Code" style="text-transform:uppercase" maxlength="6">
+              <button id="btnJoinRoom">Join Room</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: WiFi / WebSocket Bridge -->
+      <div id="mPane_ws" class="conn-pane" style="display:none">
+        <div class="conn-box">
+          <h4>🌐 Local WiFi / Network Bridge</h4>
+          <p style="margin:0;color:var(--muted);font-size:13px">
+            Connect directly over WiFi to an ESP32 or a computer running <code>bridge.py</code>.
+          </p>
+          <div class="input-row">
+            <input type="text" id="wsUrlInput" placeholder="ws://192.168.1.100:8765" value="ws://localhost:8765">
+            <button id="btnConnectWs" class="success-btn">Connect</button>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="alt" style="font-size:12px;padding:4px 8px;min-height:unset" onclick="$('wsUrlInput').value='ws://localhost:8765'">PC Bridge (:8765)</button>
+            <button class="alt" style="font-size:12px;padding:4px 8px;min-height:unset" onclick="$('wsUrlInput').value='ws://192.168.4.1:81'">ESP32 AP (192.168.4.1:81)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: USB Serial / OTG -->
+      <div id="mPane_usb" class="conn-pane" style="display:none">
+        <div class="conn-box">
+          <h4>🔌 Direct USB Serial Connection</h4>
+          <p style="margin:0;color:var(--muted);font-size:13px">
+            Direct Web Serial connection at 115200 baud. Works on laptops (Chrome/Edge) and Android phones with a USB-C OTG cable.
+          </p>
+          <div id="usbSupportMsg"></div>
+          <button id="btnConnectUsb" class="success-btn" style="width:100%">Select USB Serial Device</button>
+        </div>
+      </div>
+
+      <!-- Tab 4: Web Bluetooth -->
+      <div id="mPane_ble" class="conn-pane" style="display:none">
+        <div class="conn-box">
+          <h4>📶 Web Bluetooth (BLE)</h4>
+          <p style="margin:0;color:var(--muted);font-size:13px">
+            Connect wirelessly to ESP32 or Arduino BLE with Nordic UART Service. Supported on Android Chrome.
+          </p>
+          <div id="bleSupportMsg"></div>
+          <button id="btnConnectBle" class="alt" style="width:100%">Scan for Bluetooth Device</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==================== CORE SIGNAL DEFINITIONS & SIMULINK MODELS ==================== */
+const SIGNALS = {
+  1: { NAME: 'Underdamped second order', SYS: 'G(s)=1.44/(s^2+0.72s+1.44)', Tend: 25, Kp: '-', Ki: '-', Kd: '-' },
+  2: { NAME: 'Sluggish first order + dead time', SYS: 'G(s)=e^-1s/(4s+1)', Tend: 30, Kp: '-', Ki: '-', Kd: '-' },
+  3: { NAME: 'PID-controlled process', SYS: 'Plant 1/(s+1)^2 with PID (N=20)', Tend: 20, Kp: 2, Ki: 2, Kd: 0.2 },
+  4: { NAME: 'Recorded scope response', SYS: 'Recorded from Simulink Scope', Tend: 30, Kp: '-', Ki: '-', Kd: '-' }
+};
+const TBL_T = [0, 1.05, 1.23, 1.44, 1.73, 2, 2.5, 2.89, 3.21, 3.54, 3.8, 4.04, 4.33, 4.66, 4.98, 5.37, 5.79, 6.1, 6.4, 6.73, 7.14, 7.61, 8.05, 8.48, 8.84, 9.26, 9.9, 10.37, 10.8, 11.27, 11.85, 12.4, 12.97, 13.5, 14.03, 14.7, 15.3, 15.97, 17.1, 18, 19.1, 20, 30];
+const TBL_Y = [0, 0, 0.01, 0.07, 0.22, 0.5, 0.97, 1.277, 1.457, 1.524, 1.5, 1.424, 1.3, 1.14, 0.99, 0.877, 0.842, 0.866, 0.909, 0.974, 1.043, 1.084, 1.076, 1.043, 1.01, 0.976, 0.961, 0.974, 0.991, 1.01, 1.017, 1.009, 0.998, 0.992, 0.992, 0.998, 1.002, 1.004, 1, 0.998, 1, 1, 1];
+
+function sig1(t) {
+  const z = 0.3, wn = 1.2, wd = wn * Math.sqrt(1 - z * z), phi = Math.acos(z);
+  return 1 - Math.exp(-z * wn * t) / Math.sqrt(1 - z * z) * Math.sin(wd * t + phi);
+}
+function sig2(t) { return t < 1 ? 0 : 1 - Math.exp(-(t - 1) / 4); }
+function sig4(t) {
+  for (let i = 0; i < TBL_T.length - 1; i++) {
+    if (t <= TBL_T[i + 1]) {
+      return TBL_Y[i] + (t - TBL_T[i]) * (TBL_Y[i + 1] - TBL_Y[i]) / (TBL_T[i + 1] - TBL_T[i]);
+    }
+  }
+  return TBL_Y[TBL_Y.length - 1];
+}
+
+// Closed-loop PID simulation, identical algorithm to Arduino sketch
+let pidFine = null; const DT = 0.005;
+function buildPid() {
+  const Kp = 2, Ki = 2, Kd = 0.2, N = 20, SP = 1; let y = 0, v = 0, integ = 0, xf = 0; const out = new Float64Array(12001);
+  for (let k = 0; k <= 12000; k++) {
+    out[k] = y;
+    const e = SP - y; integ += e * DT; xf += DT * N * (e - xf); const u = Kp * e + Ki * integ + Kd * N * (e - xf);
+    const a = u - 2 * v - y; y += DT * v; v += DT * a;
+  }
+  pidFine = out;
+}
+function sig3(t) {
+  if (!pidFine) buildPid();
+  const x = t / DT, i = Math.floor(x);
+  if (i >= 12000) return pidFine[12000];
+  return pidFine[i] + (x - i) * (pidFine[i + 1] - pidFine[i]);
+}
+function baseAt(id, t) { return id == 1 ? sig1(t) : id == 2 ? sig2(t) : id == 3 ? sig3(t) : sig4(t); }
+
+/* ==================== PERFORMANCE METRICS CALCULATION ==================== */
+function computeMetrics(T, SPa, PV, bandPct) {
+  const n = PV.length; if (n < 3) return null;
+  const sp = SPa[n - 1], y0 = PV[0], step = sp - y0; if (Math.abs(step) < 1e-9) return null;
+  const yn = PV.map(v => (v - y0) / step);
+  const cross = l => {
+    for (let i = 1; i < n; i++) if (yn[i] >= l && yn[i - 1] < l) return T[i - 1] + (l - yn[i - 1]) / (yn[i] - yn[i - 1]) * (T[i] - T[i - 1]);
+    return null;
+  };
+  const t10 = cross(.1), t90 = cross(.9);
+  let pk = 0; for (let i = 1; i < n; i++) if (yn[i] > yn[pk]) pk = i;
+  const band = bandPct / 100; let last = -1;
+  for (let i = 0; i < n; i++) if (Math.abs(yn[i] - 1) > band) last = i;
+  let Ts = null;
+  if (last < 0) Ts = T[0];
+  else if (last < n - 1) {
+    const lvl = yn[last] > 1 ? 1 + band : 1 - band;
+    Ts = T[last] + (yn[last] - lvl) / (yn[last] - yn[last + 1]) * (T[last + 1] - T[last]);
+  }
+  const k = Math.max(3, Math.floor(n * 0.05)); let s = 0; for (let i = n - k; i < n; i++) s += PV[i];
+  let iae = 0, ise = 0, itae = 0;
+  for (let i = 1; i < n; i++) {
+    const dt = T[i] - T[i - 1], e0 = SPa[i - 1] - PV[i - 1], e1 = SPa[i] - PV[i];
+    iae += .5 * (Math.abs(e0) + Math.abs(e1)) * dt; ise += .5 * (e0 * e0 + e1 * e1) * dt;
+    itae += .5 * (T[i - 1] * Math.abs(e0) + T[i] * Math.abs(e1)) * dt;
+  }
+  return {
+    Tr: (t10 !== null && t90 !== null) ? t90 - t10 : null,
+    Tp: (yn[pk] - 1 > 0.0005) ? T[pk] : null,
+    Pk: PV[pk],
+    OS: Math.max(0, yn[pk] - 1) * 100,
+    Ts,
+    SSE: sp - s / k,
+    IAE: iae,
+    ISE: ise,
+    ITAE: itae
+  };
+}
+
+/* ==================== STATE & DOM HELPERS ==================== */
+let T = [], SP = [], PV = [], M = null;
+let cfg = Object.assign({ SP: 1, Ts: 0.2 }, SIGNALS[3]);
+let mode = null; // 'serial' | 'ws' | 'relay' | 'ble' | 'demo'
+let port = null, writer = null, reader = null, ws = null, mqttWs = null;
+let demoTimer = null, running = false, soundEnabled = true, activeRoom = null;
+let wakeLock = null, cursorSample = null;
+
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 3) => (v === null || v === undefined || !isFinite(v)) ? '—' : v.toFixed(d);
+
+function showCfg() {
+  ['NAME', 'SYS', 'SP', 'Ts', 'Tend', 'Kp', 'Ki', 'Kd'].forEach(k => {
+    $('i' + k).textContent = (cfg[k] === undefined || cfg[k] === '-') ? '—' : cfg[k];
+  });
+  $('iN').textContent = T.length;
+}
+
+function setStatus(state, txt) {
+  const d = $('dot');
+  d.className = 'dot ' + (state === 'on' ? 'on' : state === 'warn' ? 'warn' : '');
+  $('statusTxt').textContent = txt;
+}
+
+function setBadge(kind) {
+  const b = $('badge');
+  b.className = 'badge ' + (kind || '');
+  b.textContent = kind === 'live' ? 'Live' : kind === 'final' ? 'Final' : 'Waiting';
+}
+
+function setButtons() {
+  const connected = mode !== null;
+  $('btnStart').disabled = !connected || running;
+  $('btnStop').disabled = !running;
+  $('btnCsv').disabled = T.length < 2;
+  $('selSig').disabled = running;
+}
+
+/* ==================== HAPTICS, AUDIO & WAKE LOCK ==================== */
+function vibrate(pat = 40) {
+  if ('vibrate' in navigator) { try { navigator.vibrate(pat); } catch (e) { } }
+}
+
+let audioCtx = null;
+function playTone(freq = 660, type = 'sine', duration = 0.15) {
+  if (!soundEnabled) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) { }
+}
+
+async function requestWakeLock() {
+  if ('wakeLock' in navigator && !wakeLock) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (e) { }
+  }
+}
+function releaseWakeLock() {
+  if (wakeLock) { try { wakeLock.release(); } catch (e) { } wakeLock = null; }
+}
+
+/* ==================== SAMPLE STREAMING & METRICS UPDATE ==================== */
+function addSample(t, sp, pv) {
+  T.push(t); SP.push(sp); PV.push(pv);
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${t.toFixed(2)}</td><td>${sp.toFixed(3)}</td><td>${pv.toFixed(4)}</td><td>${(sp - pv).toFixed(4)}</td>`;
+  const body = $('rows');
+  body.prepend(tr);
+  while (body.children.length > 60) body.lastChild.remove();
+  $('hudLive').textContent = 't = ' + t.toFixed(2) + ' s';
+  cfg.SP = sp;
+  update();
+}
+
+function update() {
+  M = computeMetrics(T, SP, PV, parseFloat($('band').value) || 2);
+  if (M) {
+    $('mTr').textContent = fmt(M.Tr, 2);
+    $('mTp').textContent = fmt(M.Tp, 2);
+    $('mOS').textContent = fmt(M.OS, 2);
+    $('mTs').textContent = fmt(M.Ts, 2);
+    $('mSSE').textContent = fmt(M.SSE, 4);
+    $('mIAE').textContent = fmt(M.IAE, 3);
+    $('mISE').textContent = fmt(M.ISE, 3);
+    $('mITAE').textContent = fmt(M.ITAE, 3);
+
+    // Update Quick KPI Strip for Smartphone visibility
+    $('kpiTr').textContent = M.Tr !== null ? fmt(M.Tr, 2) + ' s' : '—';
+    $('kpiOS').textContent = fmt(M.OS, 1) + '%';
+    $('kpiPeakSub').textContent = 'Peak: ' + (M.Pk ? fmt(M.Pk, 3) : '—');
+    $('kpiTs').textContent = M.Ts !== null ? fmt(M.Ts, 2) + ' s' : '—';
+    $('kpiSSE').textContent = fmt(M.SSE, 4);
+
+    setBadge(running ? 'live' : 'final');
+  }
+  showCfg();
+  draw();
+  setButtons();
+}
+
+function clearData() {
+  T = []; SP = []; PV = []; M = null; cursorSample = null;
+  $('rows').innerHTML = '';
+  $('hudLive').textContent = 't = 0.00 s';
+  ['mTr', 'mTp', 'mOS', 'mTs', 'mSSE', 'mIAE', 'mISE', 'mITAE', 'kpiTr', 'kpiOS', 'kpiTs', 'kpiSSE'].forEach(i => $(i).textContent = '—');
+  $('kpiPeakSub').textContent = 'Peak: —';
+  setBadge('');
+  showCfg();
+  draw();
+  setButtons();
+}
+$('band').addEventListener('input', update);
+
+/* ==================== OSCILLOSCOPE CANVAS RENDERING ==================== */
+const cvs = $('cv'), ctx = cvs.getContext('2d');
+
+function draw() {
+  const dpr = window.devicePixelRatio || 1;
+  const W = cvs.clientWidth, H = cvs.clientHeight;
+  cvs.width = W * dpr; cvs.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#161b22';
+  ctx.fillRect(0, 0, W, H);
+
+  const L = W < 420 ? 38 : 46, R = 14, Tp = 12, B = 28, w = W - L - R, h = H - Tp - B;
+  const xmax = Math.max(+cfg.Tend || 30, T.length ? T[T.length - 1] : 0);
+  let ymin = -0.1, ymax = Math.max(1.2, cfg.SP * 1.2);
+  for (const v of PV) { ymax = Math.max(ymax, v + 0.1); ymin = Math.min(ymin, v - 0.05); }
+  ymax = Math.ceil(ymax * 10) / 10; ymin = Math.floor(ymin * 10) / 10;
+
+  const X = t => L + t / xmax * w, Y = v => Tp + (ymax - v) / (ymax - ymin) * h;
+
+  // Grid
+  ctx.font = '11.5px -apple-system, Segoe UI, sans-serif';
+  ctx.fillStyle = '#9aa7b4';
+  ctx.strokeStyle = '#2b333d';
+  ctx.lineWidth = 1;
+
+  const xs = xmax <= 12 ? 1 : xmax <= 32 ? 2 : 5;
+  for (let t = 0; t <= xmax + 1e-9; t += xs) {
+    ctx.beginPath(); ctx.moveTo(X(t), Tp); ctx.lineTo(X(t), Tp + h); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.fillText(t, X(t), H - 9);
+  }
+  const ys = (ymax - ymin) > 3 ? 0.5 : 0.1;
+  for (let v = Math.ceil(ymin / ys) * ys; v <= ymax + 1e-9; v += ys) {
+    ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(L + w, Y(v)); ctx.stroke();
+    ctx.textAlign = 'right'; ctx.fillText(+v.toFixed(2), L - 6, Y(v) + 4);
+  }
+
+  // Settling band
+  const bd = (parseFloat($('band').value) || 2) / 100 * cfg.SP;
+  ctx.fillStyle = 'rgba(94,200,229,.14)';
+  ctx.fillRect(L, Y(cfg.SP + bd), w, Y(cfg.SP - bd) - Y(cfg.SP + bd));
+  ctx.strokeStyle = '#5ec8e5';
+  ctx.setLineDash([6, 5]);
+  ctx.beginPath(); ctx.moveTo(L, Y(cfg.SP)); ctx.lineTo(L + w, Y(cfg.SP)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Process Value PV curve
+  if (PV.length > 1) {
+    ctx.strokeStyle = '#f2d541';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    PV.forEach((v, i) => { i ? ctx.lineTo(X(T[i]), Y(v)) : ctx.moveTo(X(T[i]), Y(v)); });
+    ctx.stroke();
+  }
+
+  // Markers
+  if (M) {
+    if (M.OS > 0.05 && M.Tp !== null) {
+      ctx.fillStyle = '#f2d541';
+      ctx.beginPath(); ctx.arc(X(M.Tp), Y(M.Pk), 4.5, 0, 7); ctx.fill();
+      ctx.textAlign = 'left';
+      ctx.fillText('peak ' + M.Pk.toFixed(3), X(M.Tp) + 8, Y(M.Pk) + 4);
+    }
+    if (M.Ts !== null && !running) {
+      ctx.strokeStyle = '#e58a5e';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(X(M.Ts), Tp); ctx.lineTo(X(M.Ts), Tp + h); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#e58a5e';
+      ctx.textAlign = 'left';
+      ctx.fillText('settled ' + M.Ts.toFixed(1) + ' s', X(M.Ts) + 5, Tp + 14);
+    }
+  }
+
+  // Touch Inspector Crosshair
+  if (cursorSample) {
+    const cx = X(cursorSample.t), cy = Y(cursorSample.pv);
+    ctx.strokeStyle = '#5ec8e5';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(cx, Tp); ctx.lineTo(cx, Tp + h); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#5ec8e5';
+    ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill();
+  }
+}
+window.addEventListener('resize', draw);
+
+// Touch & Mouse Inspection
+function inspectAt(clientX) {
+  if (!T.length) return;
+  const rect = cvs.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const L = cvs.clientWidth < 420 ? 38 : 46, w = cvs.clientWidth - L - 14;
+  const xmax = Math.max(+cfg.Tend || 30, T[T.length - 1]);
+  const tTarget = Math.max(0, Math.min(xmax, (x - L) / w * xmax));
+
+  // Find closest sample
+  let bestIdx = 0, bestDiff = Infinity;
+  for (let i = 0; i < T.length; i++) {
+    const diff = Math.abs(T[i] - tTarget);
+    if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+  }
+  const t = T[bestIdx], sp = SP[bestIdx], pv = PV[bestIdx], e = sp - pv;
+  cursorSample = { t, sp, pv, e };
+
+  const hud = $('scopeHud');
+  $('hudT').textContent = `t = ${t.toFixed(2)} s`;
+  $('hudSP').textContent = `SP = ${sp.toFixed(3)}`;
+  $('hudPV').textContent = `PV = ${pv.toFixed(4)}`;
+  $('hudE').textContent = `e = ${e.toFixed(4)}`;
+  hud.classList.add('active');
+  draw();
+}
+
+cvs.addEventListener('mousemove', e => inspectAt(e.clientX));
+cvs.addEventListener('mouseleave', () => {
+  cursorSample = null;
+  $('scopeHud').classList.remove('active');
+  draw();
+});
+cvs.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    e.preventDefault();
+    inspectAt(e.touches[0].clientX);
+  }
+}, { passive: false });
+cvs.addEventListener('touchmove', e => {
+  if (e.touches.length === 1) {
+    e.preventDefault();
+    inspectAt(e.touches[0].clientX);
+  }
+}, { passive: false });
+cvs.addEventListener('touchend', () => {
+  setTimeout(() => {
+    cursorSample = null;
+    $('scopeHud').classList.remove('active');
+    draw();
+  }, 1800);
+});
+
+/* ==================== LINE PROTOCOL PARSER ==================== */
+function handleLine(line) {
+  line = line.trim();
+  if (!line) return;
+
+  // Broadcast to paired phone if hosting
+  if (activeRoom && isHost && mqttWs && mqttWs.readyState === WebSocket.OPEN) {
+    publishMqtt(`ppm/${activeRoom}/data`, line);
+  }
+
+  if (line.startsWith('META,')) {
+    line.slice(5).split(',').forEach(kv => {
+      const i = kv.indexOf('='); if (i < 0) return;
+      const k = kv.slice(0, i), v = kv.slice(i + 1);
+      cfg[k] = (v !== '' && isFinite(v)) ? parseFloat(v) : v;
+    });
+    showCfg(); draw(); return;
+  }
+  if (line.startsWith('DATA,')) {
+    const p = line.slice(5).split(',').map(Number);
+    if (p.length >= 3 && p.every(isFinite)) addSample(p[0], p[1], p[2]);
+    return;
+  }
+  if (line === 'END') {
+    running = false;
+    releaseWakeLock();
+    setStatus('on', (mode === 'demo' ? 'Demo' : mode === 'relay' ? 'Paired' : 'Device') + ' – run complete');
+    vibrate([80, 50, 120]);
+    playTone(523, 'sine', 0.18);
+    setTimeout(() => playTone(659, 'sine', 0.25), 200);
+    update();
+  }
+}
+
+/* ==================== COMMAND DISPATCHER ==================== */
+async function sendCmd(cmd) {
+  if (mode === 'serial' && writer) {
+    await writer.write(cmd);
+  } else if (mode === 'ws' && ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(cmd);
+  } else if (mode === 'relay' && activeRoom && mqttWs && mqttWs.readyState === WebSocket.OPEN) {
+    publishMqtt(`ppm/${activeRoom}/cmd`, cmd);
+  } else if (mode === 'ble' && bleTxChar) {
+    await bleTxChar.writeValue(new TextEncoder().encode(cmd));
+  }
+}
+
+/* ==================== SIGNAL SELECTION ==================== */
+$('selSig').addEventListener('change', () => {
+  if (running) return;
+  clearData();
+  cfg = Object.assign({ SP: 1, Ts: 0.2 }, SIGNALS[+$('selSig').value]);
+  showCfg(); draw();
+  if (mode === 'relay') sendCmd($('selSig').value);
+});
+
+/* ==================== DEMO SIMULATION MODE ==================== */
+function stopDemo() { clearInterval(demoTimer); demoTimer = null; }
+$('btnDemo').onclick = () => {
+  if (mode === 'serial') { alert('Device is connected via USB. Disconnect first to use Demo.'); return; }
+  mode = 'demo';
+  $('demoOpts').hidden = false;
+  setStatus('warn', 'Demo mode');
+  setButtons();
+};
+function startDemo() {
+  clearData(); running = true; requestWakeLock();
+  const id = +$('selSig').value, s = SIGNALS[id];
+  const stretch = $('fxSlow').checked ? 1.5 : 1, noise = $('fxNoise').checked, dist = $('fxDist').checked;
+  const Tend = s.Tend * stretch, Ts = 0.2;
+  handleLine(`META,NAME=${s.NAME}${stretch > 1 ? ' (sluggish)' : ''},SYS=${s.SYS},Ts=${Ts},SP=1,Tend=${Tend},Kp=${s.Kp},Ki=${s.Ki},Kd=${s.Kd}`);
+  let i = 0;
+  demoTimer = setInterval(() => {
+    const t = i * Ts; let pv = baseAt(id, t / stretch);
+    if (dist && t >= 12) pv -= 0.12 * Math.exp(-(t - 12) / 2);
+    if (noise) pv += (Math.random() * 2 - 1) * 0.01;
+    handleLine(`DATA,${t.toFixed(2)},1.000,${pv.toFixed(4)}`);
+    i++;
+    if (t >= Tend - 1e-9) { stopDemo(); handleLine('END'); }
+  }, 40);
+  setButtons();
+}
+
+/* ==================== BUTTON ACTIONS ==================== */
+$('btnStart').onclick = async () => {
+  vibrate(50);
+  if (mode === 'demo') { startDemo(); return; }
+  clearData(); running = true; requestWakeLock();
+  setStatus('on', (mode === 'relay' ? 'Paired' : 'Device') + ' – running');
+  await sendCmd($('selSig').value + 'S');
+  setButtons();
+};
+$('btnStop').onclick = async () => {
+  vibrate(80);
+  if (mode === 'demo') stopDemo();
+  await sendCmd('R');
+  running = false; releaseWakeLock();
+  setStatus('warn', 'Stopped'); update();
+};
+$('btnClear').onclick = () => { vibrate(30); clearData(); };
+
+// CSV Export & Mobile Share API
+$('btnCsv').onclick = async () => {
+  vibrate(30);
+  let s = 'time_s,setpoint,process_value,error\n';
+  T.forEach((t, i) => s += `${t},${SP[i]},${PV[i]},${SP[i] - PV[i]}\n`);
+  if (M) s += `\n# Signal,${cfg.NAME}\n# Rise time s,${fmt(M.Tr, 3)}\n# Peak time s,${fmt(M.Tp, 3)}\n# Overshoot %,${fmt(M.OS, 3)}\n# Settling time s,${fmt(M.Ts, 3)}\n# Steady-state error,${fmt(M.SSE, 5)}\n# IAE,${fmt(M.IAE, 4)}\n# ISE,${fmt(M.ISE, 4)}\n# ITAE,${fmt(M.ITAE, 4)}\n`;
+
+  const blob = new Blob([s], { type: 'text/csv' });
+  const file = new File([blob], 'process_run.csv', { type: 'text/csv' });
+
+  // Web Share API on mobile
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        title: 'Process Performance Run Data',
+        text: `Process telemetry run: ${cfg.NAME}`,
+        files: [file]
+      });
+      return;
+    } catch (e) { }
+  }
+
+  // Fallback download
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'process_run.csv';
+  a.click();
+};
+
+/* ==================== WEB SERIAL (USB / OTG) ==================== */
+function checkUsbSupport() {
+  const msg = $('usbSupportMsg');
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if ('serial' in navigator) {
+    let note = '<div style="background:var(--success-bg);color:var(--success);padding:8px 10px;border-radius:6px;font-size:12.5px;font-weight:600">✅ Web Serial is supported on your browser!</div>';
+    if (isAndroid) {
+      note += '<div style="margin-top:6px;font-size:12px;color:var(--muted)">💡 <b>Android OTG tip:</b> Connect your Arduino with a USB-C OTG cable and ensure OTG is turned ON in Android Settings.</div>';
+    }
+    msg.innerHTML = note;
+    $('btnConnectUsb').disabled = false;
+  } else {
+    $('btnConnectUsb').disabled = true;
+    if (isAndroid) {
+      msg.innerHTML = `<div style="background:#fff3cd;border:1px solid #ffeeba;color:#856404;padding:10px;border-radius:6px;font-size:12.5px">
+        <strong>📱 To enable USB OTG on Android Chrome:</strong>
+        <ol style="margin:6px 0 0;padding-left:18px;line-height:1.5">
+          <li>Open a new tab in Chrome and go to: <code>chrome://flags</code></li>
+          <li>Search for <b>Web Serial</b></li>
+          <li>Set <b>Enable Web Serial on Android</b> to <b>Enabled</b> and tap <i>Relaunch</i></li>
+          <li>Ensure <b>OTG</b> is enabled in phone Settings (Settings → OTG)</li>
+        </ol>
+      </div>`;
+    } else if (isIOS) {
+      msg.innerHTML = `<div style="background:#ffe3e3;border:1px solid #f5c6cb;color:#721c24;padding:10px;border-radius:6px;font-size:12.5px">
+        <strong>🍎 Apple iOS Device Detected:</strong>
+        <p style="margin:4px 0 0">Apple blocks web browsers on iPhone/iPad from connecting to physical USB cables. Please use <b>Phone Pairing (QR Code)</b> or the <b>WiFi Bridge</b> tab to monitor wirelessly!</p>
+      </div>`;
+    } else {
+      msg.innerHTML = `<div style="background:#fff3cd;border:1px solid #ffeeba;color:#856404;padding:10px;border-radius:6px;font-size:12.5px">
+        ⚠️ Web Serial is not supported in this browser. Please open this website in <b>Google Chrome</b> or <b>Microsoft Edge</b>.
+      </div>`;
+    }
+  }
+}
+
+async function connectUsb() {
+  if (!('serial' in navigator)) {
+    checkUsbSupport();
+    return;
+  }
+  try {
+    stopDemo();
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 115200 });
+    mode = 'serial'; $('demoOpts').hidden = true;
+    const enc = new TextEncoderStream();
+    enc.readable.pipeTo(port.writable);
+    writer = enc.writable.getWriter();
+    setStatus('on', 'Device connected (USB)');
+    closeModal();
+    setButtons();
+    readSerialLoop();
+  } catch (e) {
+    setStatus('', 'Connection failed: ' + e.message);
+  }
+}
+$('btnConnectUsb').onclick = connectUsb;
+
+async function readSerialLoop() {
+  const dec = new TextDecoderStream();
+  port.readable.pipeTo(dec.writable);
+  reader = dec.readable.getReader();
+  let buf = '';
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += value;
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        handleLine(buf.slice(0, i));
+        buf = buf.slice(i + 1);
+      }
+    }
+  } catch (e) { }
+  mode = null; running = false; releaseWakeLock();
+  setStatus('', 'Not connected'); setButtons();
+}
+
+/* ==================== WIFI / WEBSOCKET BRIDGE ==================== */
+$('btnConnectWs').onclick = () => {
+  const url = $('wsUrlInput').value.trim();
+  if (!url) return;
+  connectWebSocket(url);
+};
+
+function connectWebSocket(url) {
+  try {
+    setStatus('warn', 'Connecting to ' + url);
+    ws = new WebSocket(url);
+    ws.onopen = () => {
+      mode = 'ws'; $('demoOpts').hidden = true;
+      setStatus('on', 'Connected (WiFi Bridge)');
+      closeModal();
+      setButtons();
+    };
+    ws.onmessage = evt => {
+      const lines = evt.data.split('\n');
+      lines.forEach(handleLine);
+    };
+    ws.onerror = e => setStatus('', 'WebSocket error');
+    ws.onclose = () => {
+      if (mode === 'ws') {
+        mode = null; running = false; releaseWakeLock();
+        setStatus('', 'WiFi Bridge disconnected'); setButtons();
+      }
+    };
+  } catch (e) {
+    setStatus('', 'WebSocket failed: ' + e.message);
+  }
+}
+
+/* ==================== CLOUD RELAY & PHONE PAIRING (MQTT WSS) ==================== */
+let isHost = false;
+
+function buildMqttConnect(cid) {
+  const c = new TextEncoder().encode(cid);
+  const p = new Uint8Array(12 + c.length);
+  p.set([0, 4, 0x4d, 0x51, 0x54, 0x54, 4, 2, 0, 60, c.length >> 8, c.length & 0xff], 0);
+  p.set(c, 12);
+  const res = new Uint8Array(2 + p.length);
+  res[0] = 0x10; res[1] = p.length; res.set(p, 2);
+  return res;
+}
+function buildMqttSub(topic) {
+  const t = new TextEncoder().encode(topic);
+  const p = new Uint8Array(5 + t.length);
+  p[0] = 0; p[1] = 1; p[2] = t.length >> 8; p[3] = t.length & 0xff;
+  p.set(t, 4); p[4 + t.length] = 0;
+  const res = new Uint8Array(2 + p.length);
+  res[0] = 0x82; res[1] = p.length; res.set(p, 2);
+  return res;
+}
+function buildMqttPub(topic, msg) {
+  const t = new TextEncoder().encode(topic), m = new TextEncoder().encode(msg);
+  const p = new Uint8Array(2 + t.length + m.length);
+  p[0] = t.length >> 8; p[1] = t.length & 0xff;
+  p.set(t, 2); p.set(m, 2 + t.length);
+  let len = p.length, lenBytes = [];
+  do {
+    let digit = len % 128; len = Math.floor(len / 128);
+    if (len > 0) digit |= 0x80;
+    lenBytes.push(digit);
+  } while (len > 0);
+  const res = new Uint8Array(1 + lenBytes.length + p.length);
+  res[0] = 0x30;
+  for (let i = 0; i < lenBytes.length; i++) res[1 + i] = lenBytes[i];
+  res.set(p, 1 + lenBytes.length);
+  return res;
+}
+function publishMqtt(topic, msg) {
+  if (mqttWs && mqttWs.readyState === WebSocket.OPEN) {
+    mqttWs.send(buildMqttPub(topic, msg));
+  }
+}
+function parseMqtt(buf, cb) {
+  let off = 0;
+  while (off < buf.length) {
+    const type = buf[off] >> 4; off++;
+    let mult = 1, remLen = 0, digit;
+    do {
+      if (off >= buf.length) return;
+      digit = buf[off++]; remLen += (digit & 0x7f) * mult; mult *= 128;
+    } while ((digit & 0x80) !== 0);
+    const end = off + remLen;
+    if (type === 3) {
+      const topLen = (buf[off] << 8) | buf[off + 1];
+      const topic = new TextDecoder().decode(buf.slice(off + 2, off + 2 + topLen));
+      const payload = new TextDecoder().decode(buf.slice(off + 2 + topLen, end));
+      cb(topic, payload);
+    }
+    off = end;
+  }
+}
+
+function initMqttRelay(room, asHost = false) {
+  activeRoom = room; isHost = asHost;
+  setStatus('warn', 'Connecting cloud broker...');
+  try {
+    mqttWs = new WebSocket('wss://broker.hivemq.com:8884/mqtt', ['mqtt']);
+    mqttWs.binaryType = 'arraybuffer';
+    mqttWs.onopen = () => {
+      mqttWs.send(buildMqttConnect((isHost ? 'host_' : 'phone_') + Math.random().toString(36).slice(2, 7)));
+      setTimeout(() => {
+        const subTopic = isHost ? `ppm/${room}/cmd` : `ppm/${room}/data`;
+        mqttWs.send(buildMqttSub(subTopic));
+        if (!isHost) {
+          mode = 'relay';
+          setStatus('on', `Paired (Room: ${room})`);
+          closeModal();
+          setButtons();
+        } else {
+          setStatus('on', `Broadcasting (Room: ${room})`);
+        }
+      }, 400);
+    };
+    mqttWs.onmessage = evt => {
+      const buf = new Uint8Array(evt.data);
+      parseMqtt(buf, (top, msg) => {
+        if (isHost && top.endsWith('/cmd')) {
+          // Forward phone command to Arduino
+          if (msg.endsWith('S') || msg === 'R' || (msg >= '1' && msg <= '4')) {
+            sendCmd(msg);
+          }
+        } else if (!isHost && top.endsWith('/data')) {
+          handleLine(msg);
+        }
+      });
+    };
+    mqttWs.onerror = () => setStatus('', 'Cloud broker connection error');
+    mqttWs.onclose = () => {
+      if (mode === 'relay') {
+        mode = null; setStatus('', 'Pairing disconnected'); setButtons();
+      }
+    };
+  } catch (e) {
+    setStatus('', 'Relay failed: ' + e.message);
+  }
+}
+
+// Generate Room & QR Code on Laptop
+$('btnCreateRoom').onclick = () => {
+  const room = Math.random().toString(36).substring(2, 6).toUpperCase();
+  $('roomCodeDisplay').textContent = room;
+  $('pairHostArea').style.display = 'none';
+  $('pairInfoArea').style.display = 'flex';
+
+  const pairUrl = `${window.location.origin}${window.location.pathname}?room=${room}`;
+  const qr = new QRCode(0, 0);
+  qr.addData(pairUrl);
+  qr.make();
+  $('qrContainer').innerHTML = qr.toSvg(4, 8);
+
+  initMqttRelay(room, true);
+};
+
+$('btnCopyLink').onclick = () => {
+  const room = $('roomCodeDisplay').textContent;
+  const pairUrl = `${window.location.origin}${window.location.pathname}?room=${room}`;
+  navigator.clipboard.writeText(pairUrl);
+  $('btnCopyLink').textContent = '✅ Copied!';
+  setTimeout(() => $('btnCopyLink').textContent = '📋 Copy Mobile Link', 2000);
+};
+
+$('btnJoinRoom').onclick = () => {
+  const r = $('joinRoomInput').value.trim().toUpperCase();
+  if (r.length >= 3) initMqttRelay(r, false);
+};
+
+/* ==================== WEB BLUETOOTH (BLE) ==================== */
+let bleDevice = null, bleTxChar = null;
+$('btnConnectBle').onclick = async () => {
+  if (!('bluetooth' in navigator)) {
+    $('bleSupportMsg').innerHTML = `<p style="color:var(--danger)">⚠️ Web Bluetooth is not available in this browser. (Use Chrome on Android).</p>`;
+    return;
+  }
+  try {
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: 'Process' }, { namePrefix: 'ESP32' }, { namePrefix: 'Arduino' }],
+      optionalServices: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e']
+    });
+    const server = await bleDevice.gatt.connect();
+    const service = await server.getPrimaryService('6e400001-b5a3-f393-e0a9-e50e24dcca9e');
+    const rxChar = await service.getCharacteristic('6e400003-b5a3-f393-e0a9-e50e24dcca9e');
+    bleTxChar = await service.getCharacteristic('6e400002-b5a3-f393-e0a9-e50e24dcca9e');
+    await rxChar.startNotifications();
+    rxChar.addEventListener('characteristicvaluechanged', e => {
+      const line = new TextDecoder().decode(e.target.value);
+      handleLine(line);
+    });
+    mode = 'ble';
+    setStatus('on', 'Device connected (Bluetooth)');
+    closeModal();
+    setButtons();
+  } catch (e) {
+    setStatus('', 'BLE connection failed: ' + e.message);
+  }
+};
+
+/* ==================== MODAL & NAVIGATION UI ==================== */
+function openModal(tab = 'pair') {
+  $('modalConn').classList.add('open');
+  selectModalTab(tab);
+}
+function closeModal() { $('modalConn').classList.remove('open'); }
+$('btnConnect').onclick = () => openModal('pair');
+$('btnPairHdr').onclick = () => openModal('pair');
+$('btnHelp').onclick = () => openModal('pair');
+$('modalClose').onclick = closeModal;
+$('modalConn').onclick = e => { if (e.target === $('modalConn')) closeModal(); };
+
+function selectModalTab(m) {
+  document.querySelectorAll('.modal-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.m === m));
+  ['pair', 'ws', 'usb', 'ble'].forEach(name => {
+    const pane = $('mPane_' + name);
+    if (pane) pane.style.display = name === m ? 'block' : 'none';
+  });
+  if (m === 'usb') checkUsbSupport();
+}
+document.querySelectorAll('.modal-nav-btn').forEach(b => b.onclick = () => selectModalTab(b.dataset.m));
+
+// Mobile Segmented Tabs
+document.querySelectorAll('.tab-btn').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    const target = b.dataset.tab;
+    $('cardCalc').style.display = target === 'tabCalc' ? 'block' : 'none';
+    $('cardInputs').style.display = target === 'tabInput' ? 'block' : 'none';
+    $('cardSamples').style.display = target === 'tabSamples' ? 'block' : 'none';
+  };
+});
+function checkMobileLayout() {
+  if (window.innerWidth <= 1000) {
+    const activeBtn = document.querySelector('.tab-btn.active');
+    const target = activeBtn ? activeBtn.dataset.tab : 'tabCalc';
+    $('cardCalc').style.display = target === 'tabCalc' ? 'block' : 'none';
+    $('cardInputs').style.display = target === 'tabInput' ? 'block' : 'none';
+    $('cardSamples').style.display = target === 'tabSamples' ? 'block' : 'none';
+  } else {
+    $('cardCalc').style.display = 'block';
+    $('cardInputs').style.display = 'block';
+    $('cardSamples').style.display = 'block';
+  }
+}
+window.addEventListener('resize', checkMobileLayout);
+
+// Sound and Fullscreen toggles
+$('btnSound').onclick = () => {
+  soundEnabled = !soundEnabled;
+  $('btnSound').textContent = soundEnabled ? '🔊' : '🔇';
+};
+$('btnFs').onclick = () => {
+  const el = $('scopeContainer');
+  if (!document.fullscreenElement) {
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+  }
+};
+document.addEventListener('fullscreenchange', () => {
+  const isFs = !!document.fullscreenElement;
+  $('scopeContainer').classList.toggle('fullscreen', isFs);
+  $('btnFs').textContent = isFs ? '✕' : '⛶';
+  setTimeout(draw, 100);
+});
+
+/* ==================== EMBEDDED PURE JS QR CODE GENERATOR ==================== */
+const QRCode = (function () {
+  const PAD0 = 0xEC, PAD1 = 0x11;
+  function QRPolynomial(num, shift) {
+    let offset = 0; while (offset < num.length && num[offset] === 0) offset++;
+    this.num = new Array(num.length - offset + shift);
+    for (let i = 0; i < num.length - offset; i++) this.num[i] = num[i + offset];
+  }
+  QRPolynomial.prototype = {
+    get: function (i) { return this.num[i]; },
+    getLength: function () { return this.num.length; },
+    multiply: function (e) {
+      const num = new Array(this.getLength() + e.getLength() - 1).fill(0);
+      for (let i = 0; i < this.getLength(); i++) {
+        for (let j = 0; j < e.getLength(); j++) num[i + j] ^= QRMath.gmult(this.get(i), e.get(j));
+      }
+      return new QRPolynomial(num, 0);
+    },
+    mod: function (e) {
+      if (this.getLength() - e.getLength() < 0) return this;
+      const ratio = QRMath.glog(this.get(0)) - QRMath.glog(e.get(0));
+      const num = new Array(this.getLength());
+      for (let i = 0; i < this.getLength(); i++) num[i] = this.get(i);
+      for (let i = 0; i < e.getLength(); i++) num[i] ^= QRMath.gexp(QRMath.glog(e.get(i)) + ratio);
+      return new QRPolynomial(num, 0).mod(e);
+    }
+  };
+  const QRMath = {
+    glog: function (n) { if (n < 1) throw new Error('glog(' + n + ')'); return QRMath.LOG_TABLE[n]; },
+    gexp: function (n) { while (n < 0) n += 255; while (n >= 256) n -= 255; return QRMath.EXP_TABLE[n]; },
+    gmult: function (a, b) { if (a === 0 || b === 0) return 0; return QRMath.gexp(QRMath.glog(a) + QRMath.glog(b)); },
+    EXP_TABLE: new Array(256), LOG_TABLE: new Array(256)
+  };
+  for (let i = 0; i < 8; i++) QRMath.EXP_TABLE[i] = 1 << i;
+  for (let i = 8; i < 256; i++) QRMath.EXP_TABLE[i] = QRMath.EXP_TABLE[i - 4] ^ QRMath.EXP_TABLE[i - 5] ^ QRMath.EXP_TABLE[i - 6] ^ QRMath.EXP_TABLE[i - 8];
+  for (let i = 0; i < 255; i++) QRMath.LOG_TABLE[QRMath.EXP_TABLE[i]] = i;
+  function QR8bitByte(data) {
+    this.mode = 4; this.data = data; this.parsedData = [];
+    for (let i = 0; i < this.data.length; i++) {
+      const c = this.data.charCodeAt(i);
+      if (c > 0x10000) this.parsedData.push(0xF0 | ((c & 0x1C0000) >>> 18), 0x80 | ((c & 0x3F000) >>> 12), 0x80 | ((c & 0xFC0) >>> 6), 0x80 | (c & 0x3F));
+      else if (c > 0x800) this.parsedData.push(0xE0 | ((c & 0xF000) >>> 12), 0x80 | ((c & 0xFC0) >>> 6), 0x80 | (c & 0x3F));
+      else if (c > 0x7F) this.parsedData.push(0xC0 | ((c & 0x7C0) >>> 6), 0x80 | (c & 0x3F));
+      else this.parsedData.push(c);
+    }
+  }
+  QR8bitByte.prototype = {
+    getLength: function () { return this.parsedData.length; },
+    write: function (buf) { for (let i = 0; i < this.parsedData.length; i++) buf.put(this.parsedData[i], 8); }
+  };
+  function QRBitBuffer() { this.buffer = []; this.length = 0; }
+  QRBitBuffer.prototype = {
+    put: function (num, len) { for (let i = 0; i < len; i++) this.putBit(((num >>> (len - i - 1)) & 1) === 1); },
+    getLengthInBits: function () { return this.length; },
+    putBit: function (bit) {
+      const idx = Math.floor(this.length / 8);
+      if (this.buffer.length <= idx) this.buffer.push(0);
+      if (bit) this.buffer[idx] |= (0x80 >>> (this.length % 8));
+      this.length++;
+    }
+  };
+  const QRRSBlock = {
+    RS_BLOCK_TABLE: [
+      [1, 26, 19], [1, 26, 16], [1, 26, 13], [1, 26, 9],
+      [1, 44, 34], [1, 44, 28], [1, 44, 22], [1, 44, 16],
+      [1, 70, 55], [1, 70, 44], [2, 35, 17], [2, 35, 13],
+      [1, 100, 80], [2, 50, 32], [2, 50, 24], [4, 25, 9],
+      [1, 134, 108], [2, 67, 43], [2, 33, 15, 2, 34, 16], [2, 33, 11, 2, 34, 12],
+      [2, 86, 68], [4, 43, 27], [4, 43, 19], [4, 43, 15],
+      [2, 98, 78], [4, 49, 31], [2, 32, 14, 4, 33, 15], [4, 39, 13, 1, 40, 14],
+      [2, 121, 97], [2, 60, 38, 2, 61, 39], [4, 40, 18, 2, 41, 19], [4, 40, 14, 2, 41, 15]
+    ],
+    getRSBlocks: function (type, ec) {
+      const row = QRRSBlock.RS_BLOCK_TABLE[(type - 1) * 4 + ec];
+      const list = [];
+      for (let i = 0; i < row.length / 3; i++) {
+        const count = row[i * 3], total = row[i * 3 + 1], data = row[i * 3 + 2];
+        for (let j = 0; j < count; j++) list.push({ totalCount: total, dataCount: data });
+      }
+      return list;
+    }
+  };
+  const QRUtil = {
+    PATTERN_POSITION_TABLE: [[], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38], [6, 24, 42]],
+    getBCHTypeInfo: function (d) {
+      let b = d << 10;
+      while (QRUtil.getBCHDigit(b) - QRUtil.getBCHDigit(1335) >= 0) b ^= (1335 << (QRUtil.getBCHDigit(b) - QRUtil.getBCHDigit(1335)));
+      return ((d << 10) | b) ^ 21522;
+    },
+    getBCHDigit: function (d) { let digit = 0; while (d !== 0) { digit++; d >>>= 1; } return digit; },
+    getPatternPosition: function (type) { return QRUtil.PATTERN_POSITION_TABLE[type - 1] || []; },
+    getMaskFunction: function (p) {
+      return [(i, j) => (i + j) % 2 === 0, (i, j) => i % 2 === 0, (i, j) => j % 3 === 0, (i, j) => (i + j) % 3 === 0,
+      (i, j) => (Math.floor(i / 2) + Math.floor(j / 3)) % 2 === 0, (i, j) => (i * j) % 2 + (i * j) % 3 === 0,
+      (i, j) => ((i * j) % 2 + (i * j) % 3) % 2 === 0, (i, j) => ((i * j) % 3 + (i + j) % 2) % 2 === 0][p];
+    },
+    getErrorCorrectPolynomial: function (len) {
+      let a = new QRPolynomial([1], 0);
+      for (let i = 0; i < len; i++) a = a.multiply(new QRPolynomial([1, QRMath.gexp(i)], 0));
+      return a;
+    }
+  };
+  function QRCode(typeNumber, errorCorrectLevel) {
+    this.typeNumber = typeNumber || 0; this.errorCorrectLevel = errorCorrectLevel || 0;
+    this.modules = null; this.moduleCount = 0; this.dataList = [];
+  }
+  QRCode.prototype = {
+    addData: function (d) { this.dataList.push(new QR8bitByte(d)); },
+    isDark: function (r, c) { return this.modules[r][c]; },
+    make: function () {
+      if (this.typeNumber < 1) {
+        let t = 1;
+        for (; t <= 8; t++) {
+          const blocks = QRRSBlock.getRSBlocks(t, this.errorCorrectLevel);
+          const buf = new QRBitBuffer();
+          for (let i = 0; i < this.dataList.length; i++) {
+            const d = this.dataList[i]; buf.put(4, 4); buf.put(d.getLength(), 8); d.write(buf);
+          }
+          let total = 0; blocks.forEach(b => total += b.dataCount);
+          if (buf.getLengthInBits() <= total * 8) break;
+        }
+        this.typeNumber = t;
+      }
+      this.makeImpl(false, 0);
+    },
+    makeImpl: function (test, mask) {
+      this.moduleCount = this.typeNumber * 4 + 17;
+      this.modules = Array.from({ length: this.moduleCount }, () => new Array(this.moduleCount).fill(null));
+      this.setupFinder(0, 0); this.setupFinder(this.moduleCount - 7, 0); this.setupFinder(0, this.moduleCount - 7);
+      this.setupAlign(); this.setupTiming(); this.setupTypeInfo(mask);
+      const data = QRCode.createData(this.typeNumber, this.errorCorrectLevel, this.dataList);
+      this.mapData(data, mask);
+    },
+    setupFinder: function (row, col) {
+      for (let r = -1; r <= 7; r++) {
+        if (row + r <= -1 || this.moduleCount <= row + r) continue;
+        for (let c = -1; c <= 7; c++) {
+          if (col + c <= -1 || this.moduleCount <= col + c) continue;
+          this.modules[row + r][col + c] = ((0 <= r && r <= 6 && (c === 0 || c === 6)) || (0 <= c && c <= 6 && (r === 0 || r === 6)) || (2 <= r && r <= 4 && 2 <= c && c <= 4));
+        }
+      }
+    },
+    setupTiming: function () {
+      for (let r = 8; r < this.moduleCount - 8; r++) if (this.modules[r][6] === null) this.modules[r][6] = (r % 2 === 0);
+      for (let c = 8; c < this.moduleCount - 8; c++) if (this.modules[6][c] === null) this.modules[6][c] = (c % 2 === 0);
+    },
+    setupAlign: function () {
+      const pos = QRUtil.getPatternPosition(this.typeNumber);
+      for (let i = 0; i < pos.length; i++) {
+        for (let j = 0; j < pos.length; j++) {
+          const row = pos[i], col = pos[j];
+          if (this.modules[row][col] !== null) continue;
+          for (let r = -2; r <= 2; r++) {
+            for (let c = -2; c <= 2; c++) this.modules[row + r][col + c] = (r === -2 || r === 2 || c === -2 || c === 2 || (r === 0 && c === 0));
+          }
+        }
+      }
+    },
+    setupTypeInfo: function (mask) {
+      const bits = QRUtil.getBCHTypeInfo((1 << 3) | mask);
+      for (let i = 0; i < 15; i++) {
+        const mod = ((bits >> i) & 1) === 1;
+        if (i < 6) this.modules[i][8] = mod;
+        else if (i < 8) this.modules[i + 1][8] = mod;
+        else this.modules[this.moduleCount - 15 + i][8] = mod;
+        if (i < 8) this.modules[8][this.moduleCount - i - 1] = mod;
+        else if (i < 9) this.modules[8][15 - i] = mod;
+        else this.modules[8][15 - i - 1] = mod;
+      }
+      this.modules[this.moduleCount - 8][8] = true;
+    },
+    mapData: function (data, mask) {
+      let inc = -1, row = this.moduleCount - 1, bit = 7, byte = 0;
+      const maskFunc = QRUtil.getMaskFunction(mask);
+      for (let col = this.moduleCount - 1; col > 0; col -= 2) {
+        if (col === 6) col--;
+        while (true) {
+          for (let c = 0; c < 2; c++) {
+            if (this.modules[row][col - c] === null) {
+              let dark = false;
+              if (byte < data.length) dark = (((data[byte] >>> bit) & 1) === 1);
+              if (maskFunc(row, col - c)) dark = !dark;
+              this.modules[row][col - c] = dark;
+              bit--; if (bit === -1) { byte++; bit = 7; }
+            }
+          }
+          row += inc;
+          if (row < 0 || this.moduleCount <= row) { row -= inc; inc = -inc; break; }
+        }
+      }
+    },
+    toSvg: function (cellSize = 4, margin = 8) {
+      const size = this.moduleCount * cellSize + margin * 2;
+      let path = '';
+      for (let r = 0; r < this.moduleCount; r++) {
+        for (let c = 0; c < this.moduleCount; c++) {
+          if (this.isDark(r, c)) path += `M${c * cellSize + margin},${r * cellSize + margin}h${cellSize}v${cellSize}h-${cellSize}z `;
+        }
+      }
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><rect width="100%" height="100%" fill="#ffffff" rx="6"/><path d="${path}" fill="#0b4a7d"/></svg>`;
+    }
+  };
+  QRCode.createData = function (type, ec, list) {
+    const blocks = QRRSBlock.getRSBlocks(type, ec);
+    const buf = new QRBitBuffer();
+    for (let i = 0; i < list.length; i++) { const d = list[i]; buf.put(4, 4); buf.put(d.getLength(), 8); d.write(buf); }
+    let total = 0; blocks.forEach(b => total += b.dataCount);
+    if (buf.getLengthInBits() + 4 <= total * 8) buf.put(0, 4);
+    while (buf.getLengthInBits() % 8 !== 0) buf.putBit(false);
+    while (buf.getLengthInBits() < total * 8) { buf.put(PAD0, 8); if (buf.getLengthInBits() < total * 8) buf.put(PAD1, 8); }
+    return QRCode.createBytes(buf, blocks);
+  };
+  QRCode.createBytes = function (buf, blocks) {
+    let off = 0, maxDc = 0, maxEc = 0;
+    const dc = [], ec = [];
+    for (let r = 0; r < blocks.length; r++) {
+      const dcCount = blocks[r].dataCount, ecCount = blocks[r].totalCount - dcCount;
+      maxDc = Math.max(maxDc, dcCount); maxEc = Math.max(maxEc, ecCount);
+      dc[r] = new Array(dcCount);
+      for (let i = 0; i < dc[r].length; i++) dc[r][i] = 0xFF & buf.buffer[i + off];
+      off += dcCount;
+      const rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+      const rawPoly = new QRPolynomial(dc[r], rsPoly.getLength() - 1);
+      const modPoly = rawPoly.mod(rsPoly);
+      ec[r] = new Array(rsPoly.getLength() - 1);
+      for (let i = 0; i < ec[r].length; i++) {
+        const modIdx = i + modPoly.getLength() - ec[r].length;
+        ec[r][i] = modIdx >= 0 ? modPoly.get(modIdx) : 0;
+      }
+    }
+    const out = [];
+    for (let i = 0; i < maxDc; i++) for (let r = 0; r < blocks.length; r++) if (i < dc[r].length) out.push(dc[r][i]);
+    for (let i = 0; i < maxEc; i++) for (let r = 0; r < blocks.length; r++) if (i < ec[r].length) out.push(ec[r][i]);
+    return out;
+  };
+  return QRCode;
+})();
+
+/* ==================== INITIALIZATION & URL ROOM AUTO-JOIN ==================== */
+function init() {
+  showCfg();
+  draw();
+  setButtons();
+  checkMobileLayout();
+
+  // Check URL query params for ?room=ABCD (auto-join on smartphone)
+  const params = new URLSearchParams(window.location.search);
+  const roomParam = params.get('room');
+  if (roomParam) {
+    $('joinRoomInput').value = roomParam.toUpperCase();
+    initMqttRelay(roomParam.toUpperCase(), false);
+  }
+}
+window.addEventListener('DOMContentLoaded', init);
+init();
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => { });
+}
+</script>
+</body>
+</html>
